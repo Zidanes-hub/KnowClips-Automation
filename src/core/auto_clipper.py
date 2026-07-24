@@ -115,9 +115,9 @@ def analyze_speech_density(parsed_vtt, duration, window_size=60, step=10):
         # Hitung jumlah kata dalam window [t, window_end]
         word_count = sum(1 for w in words_data if t <= w < window_end)
         
-        # Normalisasi ke skala 0-1 (akan dinormalisasi di find_heatmap_peaks tapi kita beri raw value)
         density_data.append({
-            'start_time': float(t + (window_size / 2)), # tengah-tengah window
+            'start_time': float(t),
+            'end_time': float(window_end),
             'value': float(word_count)
         })
         
