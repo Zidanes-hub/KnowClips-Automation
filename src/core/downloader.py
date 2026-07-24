@@ -20,11 +20,16 @@ def load_manual_approved(path):
     with open(path, "r", encoding="utf-8") as f:
         for line in f:
             line = line.strip()
-            if not line or line.startswith("#") or "|" not in line:
+            if not line or line.startswith("#"):
                 continue
-            parts = [p.strip() for p in line.split("|", 2)]
-            if len(parts) == 3 and parts[0]:
-                out.append({"id": parts[0], "title": parts[1], "url": parts[2]})
+            if "|" in line:
+                parts = [p.strip() for p in line.split("|", 2)]
+                if len(parts) == 3 and parts[0]:
+                    out.append({"id": parts[0], "title": parts[1], "url": parts[2]})
+            else:
+                # Raw URL directly from prompt
+                vid_id = line.split("/")[-1].split("?")[0].replace("watch", "")
+                out.append({"id": vid_id, "title": "Manual Entry", "url": line})
     return out
 
 
