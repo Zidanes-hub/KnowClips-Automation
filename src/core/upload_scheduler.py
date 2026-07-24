@@ -86,9 +86,9 @@ def upload_one(service, video, cfg, publish_at):
     if os.path.exists(meta_path):
         meta = read_json(meta_path, {})
         title = meta.get("title", title)
-        channel_url = meta.get("channel_url", "")
-        if channel_url:
-            desc_addon = f"\n\nCredit & Video Asli: {channel_url}"
+        original_url = meta.get("original_url") or meta.get("channel_url", "")
+        if original_url:
+            desc_addon = f"\n\nCredit & Video Asli: {original_url}"
             
     body = {
         "snippet": {

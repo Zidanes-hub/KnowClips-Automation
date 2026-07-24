@@ -188,7 +188,7 @@ def run(cfg):
         with open(json_path, 'r', encoding='utf-8') as f:
             info = json.load(f)
             
-        channel_url = info.get("channel_url") or info.get("uploader_url") or ""
+        original_url = info.get("webpage_url") or info.get("original_url") or info.get("channel_url") or ""
             
         heatmap = info.get('heatmap')
         num_clips = cfg.get("clips_per_video", 5)
@@ -243,7 +243,8 @@ def run(cfg):
                     # Save metadata
                     meta_data = {
                         "title": title or f"{stem} Part {idx}",
-                        "channel_url": channel_url
+                        "original_url": original_url,
+                        "channel_url": original_url # Keep this for backward compatibility with old clips
                     }
                     with open(meta_out, 'w', encoding='utf-8') as mf:
                         json.dump(meta_data, mf, indent=2, ensure_ascii=False)
