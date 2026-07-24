@@ -53,23 +53,33 @@ def get_service(cfg):
 
 def next_publish_time(cfg, state):
     """Compute the next publishAt (RFC3339 UTC). Spread 2 videos per day."""
-    slot = state.get("slots_used", 0)
-    
-    # Default buffer_days to 1 instead of 5
+    last_publish_str = state.get("last_publish_time")
     buffer_days = cfg.get("buffer_days", 1)
+    now = datetime.now(timezone.utc)
     
-    # Karena kita ingin upload 2 video per hari:
-    # Slot 0 dan 1 -> Hari ke-1
-    # Slot 2 dan 3 -> Hari ke-2, dst.
-    day_offset = slot // 2
-    base = datetime.now(timezone.utc) + timedelta(days=buffer_days + day_offset)
+    # 05:00 UTC = 12:00 Siang WIB
+    # 12:00 UTC = 19:00 Malam WIB
     
-    # 05:00 UTC = 12:00 Siang WIB (Video Pertama hari itu)
-    # 12:00 UTC = 19:00 Malam WIB (Video Kedua hari itu)
-    chosen_hour = 5 if slot % 2 == 0 else 12
+    if not last_publish_str:
+        # Start fresh
+        base = now + timedelta(days=buffer_days)
+        return base.replace(hour=5, minute=0, second=0, microsecond=0)
+        
+    last_publish = datetime.fromisoformat(last_publish_str)
     
-    dt = base.replace(hour=chosen_hour, minute=0, second=0, microsecond=0)
-    return dt
+    # If the queue is empty and last publish was in the past, reset to tomorrow
+    if last_publish < now:
+        base = now + timedelta(days=buffer_days)
+        return base.replace(hour=5, minute=0, second=0, microsecond=0)
+        
+    # Contiguous scheduling: pick the next logical slot
+    if last_publish.hour == 5:
+        # If last was noon, next is evening on the same day
+        return last_publish.replace(hour=12)
+    else:
+        # If last was evening, next is noon on the NEXT day
+        next_day = last_publish + timedelta(days=1)
+        return next_day.replace(hour=5)
 
 
 def upload_one(service, video, cfg, publish_at):
@@ -156,6 +166,7 @@ def run(cfg):
             continue
         uploaded_set.add(os.path.basename(video))
         state["slots_used"] = state.get("slots_used", 0) + 1
+        state["last_publish_time"] = publish_at.isoformat()
         state["uploaded"] = sorted(uploaded_set)
         write_json(UPLOAD_STATE, state)
         done.append(vid_id)
