@@ -38,6 +38,18 @@ def generate_ass(segments, ass_path, font_path, style="hormozi"):
             "Outline": 8,
             "Shadow": 8
         },
+        "mrbeast_karaoke": {
+            "font": "Impact", 
+            "size": 95,
+            "PrimaryColour": "&H00FFFFFF",
+            "SecondaryColour": "&H0000FFFF", # Karaoke active color (Yellow)
+            "OutlineColour": "&H00000000",
+            "BackColour": "&H00000000",
+            "Bold": 0,
+            "BorderStyle": 1,
+            "Outline": 8,
+            "Shadow": 8
+        },
         "neon": {
             "font": "Segoe UI", 
             "size": 85,
@@ -107,16 +119,36 @@ def generate_ass(segments, ass_path, font_path, style="hormozi"):
     with open(ass_path, "w", encoding="utf-8") as f:
         f.write(header)
 
+        # Helper to chunk a list into smaller lists of max n items
+        def chunk_words(word_list, n=4):
+            for i in range(0, len(word_list), n):
+                yield word_list[i:i + n]
+                
+        # Flatten all words from all segments and chunk them
+        all_words = []
         for seg in segments:
-            # Handle faster-whisper segment object or dict
-            seg_s = getattr(seg, 'start', None)
-            if seg_s is None:
-                seg_s = seg["start"]
-                seg_e = seg["end"]
+            words = getattr(seg, 'words', None)
+            if words is None:
                 words = seg.get("words", [])
-            else:
-                seg_e = seg.end
-                words = seg.words
+            for w in words:
+                if isinstance(w, dict):
+                    all_words.append(w)
+                else:
+                    all_words.append({"word": w.word, "start": w.start, "end": w.end})
+                    
+        chunked_segments = []
+        for chunk in chunk_words(all_words, 4):
+            if chunk:
+                chunked_segments.append({
+                    "start": chunk[0]["start"],
+                    "end": chunk[-1]["end"],
+                    "words": chunk
+                })
+
+        for seg in chunked_segments:
+            seg_s = seg["start"]
+            seg_e = seg["end"]
+            words = seg["words"]
 
             if not words:
                 continue
@@ -126,19 +158,14 @@ def generate_ass(segments, ass_path, font_path, style="hormozi"):
             current_w = 0
             
             for w_obj in words:
-                if isinstance(w_obj, dict):
-                    text = w_obj["word"].strip()
-                    w_s = w_obj["start"]
-                    w_e = w_obj["end"]
-                else:
-                    text = w_obj.word.strip()
-                    w_s = w_obj.start
-                    w_e = w_obj.end
+                text = w_obj["word"].strip()
+                w_s = w_obj["start"]
+                w_e = w_obj["end"]
                     
                 if not text:
                     continue
                     
-                if style == "mrbeast":
+                if "mrbeast" in style:
                     text = text.upper()
                     
                 w_len = get_word_width(text)
@@ -165,7 +192,7 @@ def generate_ass(segments, ass_path, font_path, style="hormozi"):
             total_stack_h = (len(lines) - 1) * line_spacing
             current_y = play_res_y - margin_v - total_stack_h
 
-            if style == "karaoke":
+            if style in ["karaoke", "mrbeast_karaoke"]:
                 for line in lines:
                     line_y = current_y
                     t_line_start = line["words"][0]["start"]

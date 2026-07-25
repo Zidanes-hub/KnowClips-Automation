@@ -91,18 +91,18 @@ def main():
             sys.exit(1)
             
         source_video = downloads[0]
-        base_clip = os.path.join(paths["clips"], "base_test_clip.mp4")
+        base_clip = os.path.join(paths["output"], "base_test_clip.mp4")
         
         LOG.info(f"Extracting 10-second test clip from {os.path.basename(source_video)}")
         cmd = [ffmpeg, "-y", "-i", source_video, "-ss", "00:00:30", "-t", "10", "-c", "copy", base_clip]
         run_cmd(cmd, capture=True)
         
-        styles = ["hormozi", "mrbeast", "neon", "karaoke"]
+        styles = ["hormozi", "mrbeast", "mrbeast_karaoke", "neon", "karaoke"]
         for style in styles:
             LOG.info(f"--- Rendering Test Style: {style.upper()} ---")
             test_cfg = copy.deepcopy(cfg)
             test_cfg["subtitle_style"] = style
-            test_cfg["watermark_text"] = f"STYLE: {style.upper()}"
+            test_cfg["watermark_text"] = f"STYLE {style.upper()}"
             
             style_clip = os.path.join(paths["clips"], f"test_subtitle_{style}.mp4")
             shutil.copy(base_clip, style_clip)
