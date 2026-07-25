@@ -49,8 +49,8 @@ def _load_whisper(model_name):
     LOG.info(f"Loading Faster-Whisper model '{model_name}' (first run downloads weights)...")
     
     # Use CPU by default for broader compatibility, int8 for speed
-    # Faster-whisper automatically detects GPU if available when device="auto", but let's stick to auto/cpu
-    _WHISPER = WhisperModel(model_name, device="auto", compute_type="int8")
+    # Use CPU explicitly to prevent CUDA hang on Windows initialization
+    _WHISPER = WhisperModel(model_name, device="cpu", compute_type="int8")
     return _WHISPER
 
 
