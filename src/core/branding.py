@@ -42,12 +42,15 @@ def _load_whisper(model_name):
     if _WHISPER is not None:
         return _WHISPER
     try:
-        import whisper
+        from faster_whisper import WhisperModel
     except ImportError:
-        LOG.error("openai-whisper not installed. Run: pip install -r requirements.txt")
+        LOG.error("faster-whisper not installed. Run: pip install faster-whisper")
         return None
-    LOG.info(f"Loading Whisper model '{model_name}' (first run downloads weights)...")
-    _WHISPER = whisper.load_model(model_name)
+    LOG.info(f"Loading Faster-Whisper model '{model_name}' (first run downloads weights)...")
+    
+    # Use CPU by default for broader compatibility, int8 for speed
+    # Faster-whisper automatically detects GPU if available when device="auto", but let's stick to auto/cpu
+    _WHISPER = WhisperModel(model_name, device="auto", compute_type="int8")
     return _WHISPER
 
 
@@ -59,20 +62,21 @@ def _fmt_ts(seconds):
     return f"{h:02d}:{m:02d}:{s:02d},{ms:03d}"
 
 
-def transcribe_to_ass(model, video, ass_path, font_path):
+def transcribe_to_ass(model, video, ass_path, font_path, style="hormozi"):
     """Transcribe audio with word-level timestamps and write an .ass file."""
     try:
-        result = model.transcribe(video, fp16=False, verbose=False, word_timestamps=True)
+        segments, info = model.transcribe(video, word_timestamps=True)
+        # faster-whisper returns a generator, consume it to get all segments
+        segs = list(segments)
     except Exception as e:
         LOG.error(f"Whisper failed on {os.path.basename(video)}: {e}")
         return False
-    segs = result.get("segments", [])
     if not segs:
         return False
         
     try:
         from core.ass_maker import generate_ass
-        generate_ass(segs, ass_path, font_path)
+        generate_ass(segs, ass_path, font_path, style=style)
     except Exception as e:
         LOG.error(f"Failed to generate ASS subtitles: {e}")
         return False
@@ -133,6 +137,7 @@ def run(cfg):
         model = _load_whisper(cfg.get("whisper_model", "tiny"))
         
     watermark = cfg.get("watermark_text", "KnowClips")
+    subtitle_style = cfg.get("subtitle_style", "hormozi")
     font_path = _find_font(cfg)
     if not font_path:
         LOG.warning("Montserrat-Black font not found in storage/fonts. Ensure it is downloaded.")
@@ -150,7 +155,7 @@ def run(cfg):
             
         has_ass = False
         if model is not None:
-            has_ass = transcribe_to_ass(model, clip, tmp_ass, font_path)
+            has_ass = transcribe_to_ass(model, clip, tmp_ass, font_path, style=subtitle_style)
             
         if brand_clip(clip, out_path, work_dir, has_ass, watermark, font_path, ffmpeg):
             made.append(out_path)

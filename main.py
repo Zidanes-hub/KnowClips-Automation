@@ -32,9 +32,9 @@ def main():
     parser = argparse.ArgumentParser(description="KnowClips Automation")
     parser.add_argument(
         "--mode",
-        choices=["scrape", "download", "manual", "clip", "brand", "upload", "all"],
-        required=True,
-        help="Action mode to run",
+        choices=["scrape", "download", "manual", "clip", "brand", "upload", "all", "test_subtitle"],
+        default="all",
+        help="Pipeline step to run",
     )
     parser.add_argument(
         "--approve_first",
@@ -46,13 +46,17 @@ def main():
         default=os.path.join(BASE, "config", "config.yaml"),
         help="Path to config file",
     )
+    parser.add_argument(
+        "--url",
+        help="YouTube URL for manual mode",
+    )
     args = parser.parse_args()
 
     cfg = load_config(args.config)
 
     if args.mode == "manual":
         # Interactive bypass for a single URL
-        url = input("Enter YouTube URL to process immediately: ").strip()
+        url = args.url if args.url else input("Enter YouTube URL to process immediately: ").strip()
         if not url:
             LOG.error("No URL provided.")
             sys.exit(1)
@@ -72,6 +76,42 @@ def main():
             
         branding.run(cfg)
         LOG.info(f"Manual processing for {url} complete!")
+        sys.exit(0)
+
+    if args.mode == "test_subtitle":
+        LOG.info("=== STARTING SUBTITLE STYLE TEST ===")
+        import glob, shutil
+        from core.utils import storage_paths, run_cmd, find_ffmpeg
+        import copy
+        paths = storage_paths(cfg)
+        ffmpeg = find_ffmpeg(cfg, "ffmpeg")
+        downloads = glob.glob(os.path.join(paths["downloads"], "*.mp4"))
+        if not downloads:
+            LOG.error("No downloaded videos found in storage/downloads for testing.")
+            sys.exit(1)
+            
+        source_video = downloads[0]
+        base_clip = os.path.join(paths["clips"], "base_test_clip.mp4")
+        
+        LOG.info(f"Extracting 10-second test clip from {os.path.basename(source_video)}")
+        cmd = [ffmpeg, "-y", "-i", source_video, "-ss", "00:00:30", "-t", "10", "-c", "copy", base_clip]
+        run_cmd(cmd, capture=True)
+        
+        styles = ["hormozi", "mrbeast", "neon", "karaoke"]
+        for style in styles:
+            LOG.info(f"--- Rendering Test Style: {style.upper()} ---")
+            test_cfg = copy.deepcopy(cfg)
+            test_cfg["subtitle_style"] = style
+            test_cfg["watermark_text"] = f"STYLE: {style.upper()}"
+            
+            style_clip = os.path.join(paths["clips"], f"test_subtitle_{style}.mp4")
+            shutil.copy(base_clip, style_clip)
+            
+            branding.run(test_cfg)
+            
+        if os.path.exists(base_clip):
+            os.remove(base_clip)
+        LOG.info("Test complete! Check storage/output/ for the test_subtitle_*.mp4 files.")
         sys.exit(0)
 
     LOG.info(f"Mode: {args.mode}")
