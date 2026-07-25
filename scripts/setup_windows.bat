@@ -12,7 +12,7 @@ REM call .venv\Scripts\activate
 
 REM Run the full pipeline (scrape + download + clip + brand + upload)
 REM Or run specific modes: scrape, download, clip, brand, upload, all
-python main.py --config config.yaml --mode all
+python main.py --mode all
 
 REM Keep console open on error for debugging
 if errorlevel 1 (

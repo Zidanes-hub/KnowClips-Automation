@@ -13,7 +13,8 @@ if "%yt_url%"=="" (
 echo.
 echo Memproses video... Mohon tunggu (proses Download, Clip, dan Brand)...
 echo.
-python main.py --url "%yt_url%"
+cd /d "%~dp0\.."
+python main.py --mode manual --url "%yt_url%"
 echo.
 echo Proses selesai! Silakan periksa folder storage\output
 pause
