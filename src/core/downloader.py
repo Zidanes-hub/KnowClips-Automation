@@ -86,31 +86,33 @@ def download_one(entry, dest_dir, cfg, ffmpeg_bin=None):
     url = entry.get("url") or f"https://youtu.be/{entry['id']}"
     target_lang = cfg.get("target_language", "id")
     
-    # Pre-check subtitles
-    if not check_subtitles(url, target_lang):
-        LOG.warning(f"Skipping {entry['id']} - Video has no '{target_lang}' subtitles!")
-        return False
+
 
     out_tpl = os.path.join(dest_dir, "%(title).80s [%(id)s].%(ext)s")
     cmd = [
         sys.executable, "-m", "yt_dlp",
-        "-f", f"bestvideo[height<=720]+bestaudio[language={target_lang}]/bestvideo[height<=720]+bestaudio/best",
+        "-f", "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=720]+bestaudio/bestvideo[height<=720]+bestaudio[ext=m4a]/best[height<=720]",
         "--merge-output-format", "mp4",
         "--no-warnings",
         "--no-check-certificate",
         "--retries", "3",
-        "--extractor-args", "youtube:player_client=android,ios,web",
         "--write-info-json",
         "--write-auto-subs",
         "--sub-format", "vtt",
-        "--sub-langs", target_lang,
+        "--sub-langs", "id,en",
         "--ignore-errors",
         "-o", out_tpl,
     ]
     if ffmpeg_bin:
         cmd.extend(["--ffmpeg-location", ffmpeg_bin])
-        
-    # Let yt-dlp find ffmpeg on its own via system PATH
+    else:
+        import shutil
+        sys_ffmpeg = shutil.which("ffmpeg")
+        if sys_ffmpeg:
+            cmd.extend(["--ffmpeg-location", os.path.dirname(sys_ffmpeg)])
+        else:
+            LOG.error("ffmpeg tidak ditemukan! Install ffmpeg dulu.")
+            return False
     cmd.append(url)
     LOG.info(f"Downloading {entry['id']}: {entry.get('title', '')[:55]}")
     result = run_cmd(cmd, capture=False)
