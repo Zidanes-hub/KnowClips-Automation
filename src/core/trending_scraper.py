@@ -42,6 +42,7 @@ def search_keyword(keyword, count):
         "--no-warnings",
         "--ignore-errors",
         "--no-check-certificate",
+        "--socket-timeout", "30",
         "--js-runtimes", "node",
         "--cookies", "cookies.txt",
         "--extractor-args", "youtube:player_client=android,ios,web",
