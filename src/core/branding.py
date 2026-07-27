@@ -119,11 +119,11 @@ def auto_thumbnail(video, out_path, work_dir, title, font_path, ffmpeg, clip_ind
     # Ambil 4 kata pertama dari judul sebagai hook
     words = title.split()[:4]
     hook_text = " ".join(words).upper()
-    hook_text = re.sub(r'[\'"]', '', hook_text) # bersihkan tanda kutip
+    hook_text = re.sub(r'[^A-Z0-9 ]', '', hook_text) # bersihkan karakter spesial agar aman di FFmpeg
     
     # Resolusi 1280x720 (Thumbnail YouTube standar)
     # Gunakan font Bebas Neue, Anton, atau fallback ke Impact
-    font = font_path if font_path else "C\\:/Windows/Fonts/impact.ttf"
+    font = font_path if font_path else "C:/Windows/Fonts/impact.ttf"
     
     # Variasi warna teks berdasarkan clip_index
     text_color = "white" if clip_index == 1 else "#FFD700"
