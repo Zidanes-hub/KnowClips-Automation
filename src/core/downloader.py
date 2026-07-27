@@ -36,7 +36,8 @@ def load_manual_approved(path):
 def probe_duration(url):
     """Return video duration in seconds via yt-dlp (no download), or 0."""
     cmd = [sys.executable, "-m", "yt_dlp", "--no-warnings", "--skip-download",
-           "--cookies-from-browser", "chrome",
+           "--js-runtimes", "node",
+           "--cookies", "cookies.txt",
            "--extractor-args", "youtube:player_client=android,ios,web",
            "--print", "%(duration)s", url]
     r = run_cmd(cmd, capture=True)
@@ -64,7 +65,7 @@ def check_subtitles(url, target_lang="id"):
     LOG.info(f"Checking subtitles for {url}...")
     cmd = [
         sys.executable, "-m", "yt_dlp", "--dump-json", "--no-warnings", 
-        "--skip-download", "--cookies-from-browser", "chrome",
+        "--skip-download", "--js-runtimes", "node", "--cookies", "cookies.txt",
         "--extractor-args", "youtube:player_client=android,ios,web", url
     ]
     r = run_cmd(cmd, capture=True)
@@ -97,7 +98,8 @@ def download_one(entry, dest_dir, cfg, ffmpeg_bin=None):
         "--merge-output-format", "mp4",
         "--no-warnings",
         "--no-check-certificate",
-        "--cookies-from-browser", "chrome",
+        "--js-runtimes", "node",
+        "--cookies", "cookies.txt",
         "--retries", "3",
         "--write-info-json",
         "--write-auto-subs",

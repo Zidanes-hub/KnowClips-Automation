@@ -42,7 +42,8 @@ def search_keyword(keyword, count):
         "--no-warnings",
         "--ignore-errors",
         "--no-check-certificate",
-        "--cookies-from-browser", "chrome",
+        "--js-runtimes", "node",
+        "--cookies", "cookies.txt",
         "--extractor-args", "youtube:player_client=android,ios,web",
         query,
     ]
