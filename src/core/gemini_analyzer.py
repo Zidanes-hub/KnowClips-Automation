@@ -30,14 +30,20 @@ ATURAN WAJIB:
 2. Harus diakhiri tepat di AKHIR kalimat (titik/tanda seru/tanya).
 3. Selisih antara end_time dan start_time HARUS antara {min_dur} hingga {max_dur} detik.
 4. Jangan halusinasi timestamp! Gunakan persis angka timestamp yang ada di dalam teks VTT di bawah.
-5. Berikan sebuah "title" (judul) yang sangat catchy, spesifik, dan memancing rasa penasaran (clickbait positif) maksimal 50 karakter!
+5. Berikan sebuah "title" (judul) WAJIB menggunakan formula clickbait ini:
+   "[Angka spesifik] [Kata dramatis] & [Konsekuensi besar]!" atau variasi serupa yang sangat memancing.
+   Contoh:
+   - "3 Juta Orang TERBUNUH & Prancis RUNTUH Selamanya!"
+   - "127 Tahun Kebohongan: Sejarah yang DIHAPUS dari Buku!"
+   - "Satu Keputusan GILA yang Ubah Peta Dunia Selamanya!"
+   Pastikan kapitalisasinya memancing (Kata penting menggunakan HURUF BESAR).
 
 Kembalikan HANYA format JSON valid tanpa format markdown (```json), contoh:
 {{
   "start_time": 123.450,
   "end_time": 175.000,
   "reason": "Alasan mengapa ini viral",
-  "title": "Alasan Utama Kenapa Amerika Pecah!"
+  "title": "3 Juta Orang TERBUNUH & Prancis RUNTUH Selamanya!"
 }}
 
 Transkrip VTT:

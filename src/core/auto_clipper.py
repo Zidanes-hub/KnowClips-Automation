@@ -191,7 +191,9 @@ def run(cfg):
         original_url = info.get("webpage_url") or info.get("original_url") or info.get("channel_url") or ""
             
         heatmap = info.get('heatmap')
-        num_clips = cfg.get("clips_per_video", 5)
+        raw_num_clips = cfg.get("clips_per_video", 1)
+        # ENFORCE NEW YOUTUBE ALGORITHM RULE: Never extract more than 2 clips per source to avoid duplicate content penalty.
+        num_clips = min(raw_num_clips, 2)
         min_dur = cfg.get("clip_duration_min", 45)
         max_dur = cfg.get("clip_duration_max", 59)
         
@@ -203,6 +205,14 @@ def run(cfg):
             
         LOG.info(f"Analyzing Data & Subtitles for: {stem}")
         
+        duration = info.get("duration")
+        if not duration and parsed_vtt:
+            duration = parsed_vtt[-1]['end']
+        elif not duration:
+            duration = 600 # Fallback
+            
+        min_distance = duration / 3.0
+        
         peaks = []
         if heatmap:
             # Generate Plot
@@ -210,11 +220,10 @@ def run(cfg):
             plot_heatmap(heatmap, plot_path)
             LOG.info(f"Visual grafik Heatmap disimpan di: {plot_path}")
             
-            peaks = find_heatmap_peaks(heatmap, num_peaks=num_clips, min_dist=120) # 2 mins apart
-            LOG.info(f"Ditemukan {len(peaks)} puncak viral dari Heatmap: {[round(p,1) for p in peaks]}")
+            peaks = find_heatmap_peaks(heatmap, num_peaks=num_clips, min_dist=min_distance)
+            LOG.info(f"Ditemukan {len(peaks)} puncak viral dari Heatmap (min gap {min_distance:.1f}s): {[round(p,1) for p in peaks]}")
         else:
             LOG.info(f"Video tidak memiliki Heatmap YouTube. Membangun Analitik Kepadatan Teks (Speech Density) mandiri...")
-            duration = parsed_vtt[-1]['end']
             custom_heatmap = analyze_speech_density(parsed_vtt, duration)
             
             # Generate Custom Plot
@@ -222,8 +231,8 @@ def run(cfg):
             plot_heatmap(custom_heatmap, plot_path)
             LOG.info(f"Visual grafik Speech Density (Analitik Mandiri) disimpan di: {plot_path}")
             
-            peaks = find_heatmap_peaks(custom_heatmap, num_peaks=num_clips, min_dist=120)
-            LOG.info(f"Ditemukan {len(peaks)} puncak viral dari Analitik Mandiri: {[round(p,1) for p in peaks]}")
+            peaks = find_heatmap_peaks(custom_heatmap, num_peaks=num_clips, min_dist=min_distance)
+            LOG.info(f"Ditemukan {len(peaks)} puncak viral dari Analitik Mandiri (min gap {min_distance:.1f}s): {[round(p,1) for p in peaks]}")
         
         for idx, peak_time in enumerate(peaks, 1):
             LOG.info(f"  Menganalisis klip ke-{idx} di sekitar {peak_time:.1f}s dengan Gemini AI...")
@@ -244,11 +253,11 @@ def run(cfg):
                     meta_data = {
                         "title": title or f"{stem} Part {idx}",
                         "original_url": original_url,
-                        "channel_url": original_url # Keep this for backward compatibility with old clips
+                        "channel_url": original_url, # Keep this for backward compatibility with old clips
+                        "clip_index": idx
                     }
-                    with open(meta_out, 'w', encoding='utf-8') as mf:
-                        json.dump(meta_data, mf, indent=2, ensure_ascii=False)
-                        
+                    with open(meta_out, 'w', encoding='utf-8') as f:
+                        json.dump(meta_data, f, ensure_ascii=False, indent=2)
                     made.append(out)
             else:
                 LOG.warning(f"  Gemini gagal menemukan potongan sempurna untuk puncak {peak_time:.1f}s")

@@ -50,6 +50,11 @@ def main():
         "--url",
         help="YouTube URL for manual mode",
     )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Simulate the pipeline without actually downloading or uploading",
+    )
     args = parser.parse_args()
 
     cfg = load_config(args.config)
@@ -119,21 +124,49 @@ def main():
     if args.mode == "scrape":
         trending_scraper.run(cfg)
     elif args.mode == "download":
-        downloader.run(cfg, source="queue", approve_first=args.approve_first)
+        if args.dry_run:
+            LOG.info("DRY RUN: Skipping download.")
+        else:
+            downloader.run(cfg, source="queue", approve_first=args.approve_first)
     elif args.mode == "clip":
-        auto_clipper.run(cfg)
+        if args.dry_run:
+            LOG.info("DRY RUN: Skipping clip generation.")
+        else:
+            auto_clipper.run(cfg)
     elif args.mode == "brand":
-        branding.run(cfg)
+        if args.dry_run:
+            LOG.info("DRY RUN: Skipping branding.")
+        else:
+            branding.run(cfg)
     elif args.mode == "upload":
-        upload_scheduler.run(cfg)
+        if args.dry_run:
+            LOG.info("DRY RUN: Skipping upload.")
+        else:
+            upload_scheduler.run(cfg)
     elif args.mode == "all":
-        trending_scraper.run(cfg)
-        downloaded = downloader.run(cfg, source="queue")
-        if downloaded:
-            clips = auto_clipper.run(cfg)
-            if clips:
-                branding.run(cfg)
-                upload_scheduler.run(cfg)
+        if args.dry_run:
+            LOG.info("=== DRY RUN SIMULATION START ===")
+            queued = trending_scraper.run(cfg)
+            if queued:
+                for q in queued:
+                    LOG.info(f"DRY RUN: [Scraper] Memilih sumber: {q.get('source_channel')} - {q.get('title')}")
+                
+                num_clips = cfg.get("content_rules", {}).get("max_clips_per_source", 2)
+                total_clips = len(queued) * num_clips
+                LOG.info(f"DRY RUN: [Clipper] Akan memotong maksimal {num_clips} klip per video (Total ~{total_clips} klip).")
+                LOG.info(f"DRY RUN: [Branding] Akan merender video vertikal dan membuat custom thumbnail (warna bervariasi).")
+                LOG.info(f"DRY RUN: [Upload] Akan dijadwalkan 1 video per hari pada pukul {cfg.get('upload_schedule', {}).get('upload_time', '19:00')} WIB.")
+            else:
+                LOG.info("DRY RUN: Tidak ada video baru di queue.")
+            LOG.info("=== DRY RUN SIMULATION END ===")
+        else:
+            trending_scraper.run(cfg)
+            downloaded = downloader.run(cfg, source="queue")
+            if downloaded:
+                clips = auto_clipper.run(cfg)
+                if clips:
+                    branding.run(cfg)
+                    upload_scheduler.run(cfg)
 
     LOG.info("Done.")
 

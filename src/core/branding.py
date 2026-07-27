@@ -113,6 +113,43 @@ def brand_clip(video, out_path, work_dir, has_ass, watermark, font_path, ffmpeg)
     return True
 
 
+def auto_thumbnail(video, out_path, work_dir, title, font_path, ffmpeg, clip_index=1):
+    """Generate a custom thumbnail with text hook from the 5th second."""
+    import re
+    # Ambil 4 kata pertama dari judul sebagai hook
+    words = title.split()[:4]
+    hook_text = " ".join(words).upper()
+    hook_text = re.sub(r'[\'"]', '', hook_text) # bersihkan tanda kutip
+    
+    # Resolusi 1280x720 (Thumbnail YouTube standar)
+    # Gunakan font Bebas Neue, Anton, atau fallback ke Impact
+    font = font_path if font_path else "C\\:/Windows/Fonts/impact.ttf"
+    
+    # Variasi warna teks berdasarkan clip_index
+    text_color = "white" if clip_index == 1 else "#FFD700"
+    
+    # Filter FFmpeg: scale/crop ke 1280x720, lalu drawtext besar di tengah-bawah
+    vf = (
+        "scale=1280:720:force_original_aspect_ratio=increase,"
+        "crop=1280:720,"
+        f"drawtext=fontfile='{_font_for_filter(font)}':text='{hook_text}':"
+        f"fontsize=120:fontcolor={text_color}:borderw=8:bordercolor=black:"
+        "x=(w-text_w)/2:y=h-text_h-100:shadowcolor=black:shadowx=5:shadowy=5"
+    )
+    
+    cmd = [ffmpeg, "-y", "-hide_banner", "-loglevel", "error", 
+           "-ss", "00:00:05", "-i", video, "-vframes", "1", 
+           "-vf", vf, "-q:v", "2", out_path]
+           
+    r = run_cmd(cmd, capture=True, cwd=work_dir)
+    if r.returncode != 0:
+        LOG.error(f"ffmpeg auto_thumbnail failed: {(r.stderr or '')[:300]}")
+        return False
+    LOG.info(f"Auto Thumbnail -> {os.path.basename(out_path)}")
+    return True
+
+
+
 def run(cfg):
     paths = storage_paths(cfg)
     ffmpeg = find_ffmpeg(cfg, "ffmpeg")
@@ -159,6 +196,29 @@ def run(cfg):
             
         if brand_clip(clip, out_path, work_dir, has_ass, watermark, font_path, ffmpeg):
             made.append(out_path)
+            
+            # Generate Auto Thumbnail
+            # Buat direktori thumbnails jika belum ada
+            thumb_dir = os.path.join(cfg.get("storage_dir", "storage"), "thumbnails")
+            os.makedirs(thumb_dir, exist_ok=True)
+            thumb_path = os.path.join(thumb_dir, stem + "_thumbnail.jpg")
+            
+            # Cari judul dari metadata json jika ada
+            meta_path = os.path.join(work_dir, f"{stem}_metadata.json")
+            title = stem
+            clip_index = 1
+            if os.path.exists(meta_path):
+                import json
+                try:
+                    with open(meta_path, 'r', encoding='utf-8') as f:
+                        meta = json.load(f)
+                        title = meta.get("title", stem)
+                        clip_index = meta.get("clip_index", 1)
+                except Exception:
+                    pass
+            
+            auto_thumbnail(out_path, thumb_path, work_dir, title, None, ffmpeg, clip_index) # Use Impact natively
+
             # Auto-cleanup: hapus klip mentah agar tidak menumpuk dan diulang
             try:
                 os.remove(clip)
