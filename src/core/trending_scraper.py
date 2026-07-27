@@ -157,23 +157,28 @@ def run(cfg):
     if manual_added:
         LOG.info(f"Wrote {manual_added} non-CC videos to {cfg['manual_review_file']}")
 
-    # Top-N CC -> download queue (Prioritize non-cooldown)
-    fresh_cc = [e for e in cc_new if e["id"] not in downloaded and not e["on_cooldown"]]
-    cooldown_cc = [e for e in cc_new if e["id"] not in downloaded and e["on_cooldown"]]
+    # Gabungkan CC dan non-CC (Karena user memilih Option A: eksekusi semua berdasar Fair Use)
+    all_candidates = cc_new + non_cc_new
+    all_candidates.sort(key=lambda e: e.get("view_count") or 0, reverse=True)
+
+    # Prioritize non-cooldown sources
+    fresh = [e for e in all_candidates if e["id"] not in downloaded and not e["on_cooldown"]]
+    cooldown = [e for e in all_candidates if e["id"] not in downloaded and e["on_cooldown"]]
     
-    if len(fresh_cc) == 0 and len(cooldown_cc) > 0:
+    if len(fresh) == 0 and len(cooldown) > 0:
         LOG.warning("Warning: Source pool depleted. Consider adding new sources to config.")
         
-    to_download = (fresh_cc + cooldown_cc)[: cfg["auto_download_top_cc"]]
+    to_download = (fresh + cooldown)[: cfg.get("scraper", {}).get("auto_download_top_cc", cfg.get("auto_download_top_cc", 3))]
     
     write_json(cfg["queue_file"], to_download)
     if to_download:
-        LOG.info(f"Queued {len(to_download)} CC videos in {cfg['queue_file']}:")
+        LOG.info(f"Queued {len(to_download)} videos in {cfg['queue_file']}:")
         for e in to_download:
             cooldown_status = "[COOLDOWN]" if e["on_cooldown"] else "[FRESH]"
-            LOG.info(f"  - {cooldown_status} {e['source_channel']} | {e['id']} | {e['title'][:40]} | {e['view_count']} views")
+            cc_status = "[CC]" if e["is_cc"] else "[NON-CC]"
+            LOG.info(f"  - {cooldown_status} {cc_status} {e['source_channel']} | {e['id']} | {e['title'][:35]} | {e['view_count']} views")
     else:
-        LOG.info("No new CC videos to auto-download this run.")
+        LOG.info("No new videos to auto-download this run.")
 
     # Persist dedupe log
     search_log["seen_ids"] = sorted(seen)
