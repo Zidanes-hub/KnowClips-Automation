@@ -200,10 +200,6 @@ def run(cfg):
     import re
     
     for video in pending:
-        if state.get("last_upload_date") == today_wib_str:
-            LOG.info("Daily limit reached. Next upload scheduled for 19:00 tomorrow.")
-            break
-            
         base_name = os.path.basename(video).replace("_branded.mp4", "")
         clips_dir = os.path.join(cfg.get("storage_dir", "storage"), "clips")
         meta_path = os.path.join(clips_dir, f"{base_name}_metadata.json")
